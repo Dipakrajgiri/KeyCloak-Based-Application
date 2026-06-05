@@ -1,0 +1,65 @@
+# ===================================
+# Inventory Backend - Application Configuration
+# ===================================
+
+server:
+  port: 8080
+
+spring:
+  application:
+    name: inventory-backend
+
+  # ---- PostgreSQL Database Configuration ----
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/inventorydb}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+
+  # ---- JPA / Hibernate Configuration ----
+  jpa:
+    hibernate:
+      ddl-auto: update              # Auto-create/update tables based on entity classes
+    show-sql: true                   # Print SQL queries to console (great for learning!)
+    properties:
+      hibernate:
+        format_sql: true             # Pretty-print SQL queries
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # ---- OAuth2 Resource Server & Client (BFF Pattern) ----
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/sso-realm}
+          jwk-set-uri: ${KEYCLOAK_JWKS_URI:http://localhost:8180/realms/sso-realm/protocol/openid-connect/certs}
+      client:
+        registration:
+          keycloak:
+            client-id: ${KEYCLOAK_CLIENT_ID:inventory-backend}
+            client-secret: ${KEYCLOAK_CLIENT_SECRET:your-client-secret-here}
+            scope: openid, profile, email
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+        provider:
+          keycloak:
+            issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/sso-realm}
+
+# ---- Custom App Properties ----
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+
+# ---- Actuator ----
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+# ---- Logging ----
+logging:
+  level:
+    org.springframework.security: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
