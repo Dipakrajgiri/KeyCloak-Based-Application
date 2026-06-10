@@ -1,5 +1,6 @@
 package com.sso.backend.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -26,6 +27,9 @@ public class SecurityConfig {
 
     private final ClientRegistrationRepository clientRegistrationRepository;
 
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
+
     public SecurityConfig(ClientRegistrationRepository clientRegistrationRepository) {
         this.clientRegistrationRepository = clientRegistrationRepository;
     }
@@ -46,7 +50,7 @@ public class SecurityConfig {
 
             // Pure BFF Pattern: Backend acts as the OAuth2 Client and creates a session
             .oauth2Login(oauth2 -> oauth2
-                .defaultSuccessUrl("http://localhost:3000/", true)
+                .defaultSuccessUrl(frontendUrl.endsWith("/") ? frontendUrl : frontendUrl + "/", true)
                 .userInfoEndpoint(userInfo -> userInfo
                     .userAuthoritiesMapper(userAuthoritiesMapper())
                 )
@@ -91,7 +95,7 @@ public class SecurityConfig {
     private OidcClientInitiatedLogoutSuccessHandler oidcLogoutSuccessHandler() {
         OidcClientInitiatedLogoutSuccessHandler successHandler = 
             new OidcClientInitiatedLogoutSuccessHandler(this.clientRegistrationRepository);
-        successHandler.setPostLogoutRedirectUri("http://localhost:3000/");
+        successHandler.setPostLogoutRedirectUri(frontendUrl.endsWith("/") ? frontendUrl : frontendUrl + "/");
         return successHandler;
     }
 }

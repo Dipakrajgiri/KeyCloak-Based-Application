@@ -5,7 +5,7 @@
  * The browser automatically includes cookies when `credentials: "include"` is set.
  */
 
-const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 async function apiRequest(endpoint: string, options: RequestInit = {}) {
   const response = await fetch(`${API_URL}${endpoint}`, {

@@ -54,18 +54,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(() => {
-    window.location.href = `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/oauth2/authorization/keycloak`;
+    window.location.href = `${process.env.NEXT_PUBLIC_BACKEND_URL}/oauth2/authorization/keycloak`;
   }, []);
 
   const register = useCallback(() => {
     // Keycloak standard registration is handled on the Keycloak server itself.
     // In a BFF architecture, we redirect to the same authorization endpoint.
     // The user will click "Register" on the Keycloak login screen (requires User Registration enabled in Keycloak).
-    window.location.href = `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/oauth2/authorization/keycloak`;
+    window.location.href = `${process.env.NEXT_PUBLIC_BACKEND_URL}/oauth2/authorization/keycloak`;
   }, []);
 
   const logout = useCallback(() => {
-    window.location.href = `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080"}/api/auth/logout`;
+    window.location.href = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/logout`;
   }, []);
 
   return (
