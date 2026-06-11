@@ -10,9 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-/**
- * Category Service — handles category CRUD within an inventory
- */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -21,35 +18,25 @@ public class CategoryService {
     private final CategoryRepository categoryRepository;
     private final InventoryService inventoryService;
 
-    /**
-     * Get all categories in an inventory
-     * First verifies the inventory belongs to the user (security!)
-     */
-    public List<CategoryDTO.Response> getCategories(Long inventoryId, String userId) {
-        // This throws if the inventory doesn't belong to the user
-        inventoryService.getInventoryEntity(inventoryId, userId);
+    public List<CategoryDTO.Response> getCategories(Long inventoryId) {
+        inventoryService.getInventoryEntity(inventoryId);
 
         return categoryRepository.findByInventoryId(inventoryId).stream()
                 .map(this::toResponse)
                 .toList();
     }
 
-    /**
-     * Get a single category
-     */
-    public CategoryDTO.Response getCategory(Long inventoryId, Long categoryId, String userId) {
-        inventoryService.getInventoryEntity(inventoryId, userId);
+    public CategoryDTO.Response getCategory(Long inventoryId, Long categoryId) {
+        inventoryService.getInventoryEntity(inventoryId);
 
         Category category = categoryRepository.findByIdAndInventoryId(categoryId, inventoryId)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
         return toResponse(category);
     }
 
-    /**
-     * Create a new category within an inventory
-     */
-    public CategoryDTO.Response createCategory(Long inventoryId, CategoryDTO.CreateRequest request, String userId) {
-        Inventory inventory = inventoryService.getInventoryEntity(inventoryId, userId);
+    public CategoryDTO.Response createCategory(Long inventoryId, CategoryDTO.CreateRequest request, String userId, String accessToken) {
+        inventoryService.checkPermission("Inventory-" + inventoryId, "inventory:edit", accessToken, userId);
+        Inventory inventory = inventoryService.getInventoryEntity(inventoryId);
 
         Category category = Category.builder()
                 .name(request.name())
@@ -61,12 +48,10 @@ public class CategoryService {
         return toResponse(saved);
     }
 
-    /**
-     * Update a category
-     */
     public CategoryDTO.Response updateCategory(Long inventoryId, Long categoryId,
-                                                CategoryDTO.CreateRequest request, String userId) {
-        inventoryService.getInventoryEntity(inventoryId, userId);
+                                                CategoryDTO.CreateRequest request, String userId, String accessToken) {
+        inventoryService.checkPermission("Inventory-" + inventoryId, "inventory:edit", accessToken, userId);
+        inventoryService.getInventoryEntity(inventoryId);
 
         Category category = categoryRepository.findByIdAndInventoryId(categoryId, inventoryId)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
@@ -78,22 +63,17 @@ public class CategoryService {
         return toResponse(saved);
     }
 
-    /**
-     * Delete a category (cascade deletes all items within it)
-     */
-    public void deleteCategory(Long inventoryId, Long categoryId, String userId) {
-        inventoryService.getInventoryEntity(inventoryId, userId);
+    public void deleteCategory(Long inventoryId, Long categoryId, String userId, String accessToken) {
+        inventoryService.checkPermission("Inventory-" + inventoryId, "inventory:delete", accessToken, userId);
+        inventoryService.getInventoryEntity(inventoryId);
 
         Category category = categoryRepository.findByIdAndInventoryId(categoryId, inventoryId)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
         categoryRepository.delete(category);
     }
 
-    /**
-     * Helper: Get the raw entity (used by ItemService)
-     */
-    public Category getCategoryEntity(Long inventoryId, Long categoryId, String userId) {
-        inventoryService.getInventoryEntity(inventoryId, userId);
+    public Category getCategoryEntity(Long inventoryId, Long categoryId) {
+        inventoryService.getInventoryEntity(inventoryId);
         return categoryRepository.findByIdAndInventoryId(categoryId, inventoryId)
                 .orElseThrow(() -> new RuntimeException("Category not found"));
     }

@@ -10,9 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-/**
- * Item Service — handles item CRUD within a category
- */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -20,18 +17,18 @@ public class ItemService {
 
     private final ItemRepository itemRepository;
     private final CategoryService categoryService;
+    private final InventoryService inventoryService; // To check permissions
 
-    public List<ItemDTO.Response> getItems(Long inventoryId, Long categoryId, String userId) {
-        // Verify ownership chain: user → inventory → category
-        categoryService.getCategoryEntity(inventoryId, categoryId, userId);
+    public List<ItemDTO.Response> getItems(Long inventoryId, Long categoryId) {
+        categoryService.getCategoryEntity(inventoryId, categoryId);
 
         return itemRepository.findByCategoryId(categoryId).stream()
                 .map(this::toResponse)
                 .toList();
     }
 
-    public ItemDTO.Response getItem(Long inventoryId, Long categoryId, Long itemId, String userId) {
-        categoryService.getCategoryEntity(inventoryId, categoryId, userId);
+    public ItemDTO.Response getItem(Long inventoryId, Long categoryId, Long itemId) {
+        categoryService.getCategoryEntity(inventoryId, categoryId);
 
         Item item = itemRepository.findByIdAndCategoryId(itemId, categoryId)
                 .orElseThrow(() -> new RuntimeException("Item not found"));
@@ -39,8 +36,9 @@ public class ItemService {
     }
 
     public ItemDTO.Response createItem(Long inventoryId, Long categoryId,
-                                        ItemDTO.CreateRequest request, String userId) {
-        Category category = categoryService.getCategoryEntity(inventoryId, categoryId, userId);
+                                        ItemDTO.CreateRequest request, String userId, String accessToken) {
+        inventoryService.checkPermission("Inventory-" + inventoryId, "inventory:edit", accessToken, userId);
+        Category category = categoryService.getCategoryEntity(inventoryId, categoryId);
 
         Item item = Item.builder()
                 .name(request.name())
@@ -55,8 +53,9 @@ public class ItemService {
     }
 
     public ItemDTO.Response updateItem(Long inventoryId, Long categoryId, Long itemId,
-                                        ItemDTO.CreateRequest request, String userId) {
-        categoryService.getCategoryEntity(inventoryId, categoryId, userId);
+                                        ItemDTO.CreateRequest request, String userId, String accessToken) {
+        inventoryService.checkPermission("Inventory-" + inventoryId, "inventory:edit", accessToken, userId);
+        categoryService.getCategoryEntity(inventoryId, categoryId);
 
         Item item = itemRepository.findByIdAndCategoryId(itemId, categoryId)
                 .orElseThrow(() -> new RuntimeException("Item not found"));
@@ -70,8 +69,9 @@ public class ItemService {
         return toResponse(saved);
     }
 
-    public void deleteItem(Long inventoryId, Long categoryId, Long itemId, String userId) {
-        categoryService.getCategoryEntity(inventoryId, categoryId, userId);
+    public void deleteItem(Long inventoryId, Long categoryId, Long itemId, String userId, String accessToken) {
+        inventoryService.checkPermission("Inventory-" + inventoryId, "inventory:delete", accessToken, userId);
+        categoryService.getCategoryEntity(inventoryId, categoryId);
 
         Item item = itemRepository.findByIdAndCategoryId(itemId, categoryId)
                 .orElseThrow(() -> new RuntimeException("Item not found"));

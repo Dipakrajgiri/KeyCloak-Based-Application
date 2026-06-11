@@ -7,21 +7,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
+import org.springframework.security.oauth2.client.annotation.RegisteredOAuth2AuthorizedClient;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * Category Controller — Nested under inventories
- *
- * REST PATTERN (nested resources):
- * GET    /api/inventories/{inventoryId}/categories           → List categories
- * GET    /api/inventories/{inventoryId}/categories/{id}      → Get one
- * POST   /api/inventories/{inventoryId}/categories           → Create
- * PUT    /api/inventories/{inventoryId}/categories/{id}      → Update
- * DELETE /api/inventories/{inventoryId}/categories/{id}      → Delete
- */
 @RestController
 @RequestMapping("/api/inventories/{inventoryId}/categories")
 @RequiredArgsConstructor
@@ -31,25 +23,25 @@ public class CategoryController {
 
     @GetMapping
     public ResponseEntity<List<CategoryDTO.Response>> getAll(
-            @PathVariable Long inventoryId,
-            @AuthenticationPrincipal OAuth2User jwt) {
-        return ResponseEntity.ok(categoryService.getCategories(inventoryId, jwt.getAttribute("sub")));
+            @PathVariable Long inventoryId) {
+        return ResponseEntity.ok(categoryService.getCategories(inventoryId));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<CategoryDTO.Response> getOne(
             @PathVariable Long inventoryId,
-            @PathVariable Long id,
-            @AuthenticationPrincipal OAuth2User jwt) {
-        return ResponseEntity.ok(categoryService.getCategory(inventoryId, id, jwt.getAttribute("sub")));
+            @PathVariable Long id) {
+        return ResponseEntity.ok(categoryService.getCategory(inventoryId, id));
     }
 
     @PostMapping
     public ResponseEntity<CategoryDTO.Response> create(
             @PathVariable Long inventoryId,
             @Valid @RequestBody CategoryDTO.CreateRequest request,
-            @AuthenticationPrincipal OAuth2User jwt) {
-        CategoryDTO.Response created = categoryService.createCategory(inventoryId, request, jwt.getAttribute("sub"));
+            @AuthenticationPrincipal OAuth2User jwt,
+            @RegisteredOAuth2AuthorizedClient("keycloak") OAuth2AuthorizedClient client) {
+        String userId = jwt.getAttribute("sub");
+        CategoryDTO.Response created = categoryService.createCategory(inventoryId, request, userId, client.getAccessToken().getTokenValue());
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
@@ -58,16 +50,20 @@ public class CategoryController {
             @PathVariable Long inventoryId,
             @PathVariable Long id,
             @Valid @RequestBody CategoryDTO.CreateRequest request,
-            @AuthenticationPrincipal OAuth2User jwt) {
-        return ResponseEntity.ok(categoryService.updateCategory(inventoryId, id, request, jwt.getAttribute("sub")));
+            @AuthenticationPrincipal OAuth2User jwt,
+            @RegisteredOAuth2AuthorizedClient("keycloak") OAuth2AuthorizedClient client) {
+        String userId = jwt.getAttribute("sub");
+        return ResponseEntity.ok(categoryService.updateCategory(inventoryId, id, request, userId, client.getAccessToken().getTokenValue()));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
             @PathVariable Long inventoryId,
             @PathVariable Long id,
-            @AuthenticationPrincipal OAuth2User jwt) {
-        categoryService.deleteCategory(inventoryId, id, jwt.getAttribute("sub"));
+            @AuthenticationPrincipal OAuth2User jwt,
+            @RegisteredOAuth2AuthorizedClient("keycloak") OAuth2AuthorizedClient client) {
+        String userId = jwt.getAttribute("sub");
+        categoryService.deleteCategory(inventoryId, id, userId, client.getAccessToken().getTokenValue());
         return ResponseEntity.noContent().build();
     }
 }

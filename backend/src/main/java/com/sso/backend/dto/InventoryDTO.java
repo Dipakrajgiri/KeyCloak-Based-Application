@@ -34,12 +34,12 @@ public class InventoryDTO {
 
     /**
      * Response DTO — used when returning inventory data to the frontend
-     * Notice: no userId exposed (security!) and no entity relationships
      */
     public record Response(
         Long id,
         String name,
         String description,
+        String ownerId,
         int categoryCount,
         String createdAt,
         String updatedAt

@@ -35,13 +35,7 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
 
     /**
      * Find all inventories belonging to a specific user
-     * Spring auto-generates: SELECT * FROM inventories WHERE user_id = ?
      */
     List<Inventory> findByUserId(String userId);
 
-    /**
-     * Find a specific inventory by ID, but only if it belongs to the given user
-     * This is important for security — users should only access their own data!
-     */
-    Optional<Inventory> findByIdAndUserId(Long id, String userId);
 }

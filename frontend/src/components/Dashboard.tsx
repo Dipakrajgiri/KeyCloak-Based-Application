@@ -11,6 +11,7 @@ interface Inventory {
   id: number;
   name: string;
   description: string;
+  ownerId?: string;
   categoryCount: number;
   createdAt: string;
 }
@@ -38,7 +39,7 @@ interface Item {
 type View = "inventories" | "categories" | "items";
 
 export function Dashboard() {
-  const { } = useAuth();
+  const { userInfo } = useAuth();
 
   // Current view state
   const [view, setView] = useState<View>("inventories");
@@ -352,8 +353,25 @@ export function Dashboard() {
                       <div className="card-footer">
                         <span className="card-meta">
                           Created {new Date(inv.createdAt).toLocaleDateString()}
+                          <br/>
+                          {inv.ownerId === userInfo?.id ? (
+                            <span style={{ color: "var(--primary)" }}>✓ Owned by you</span>
+                          ) : (
+                            <span style={{ color: "var(--text-secondary)" }}>Shared (Owner: {inv.ownerId?.substring(0,8)}...)</span>
+                          )}
                         </span>
                         <div className="card-actions" onClick={(e) => e.stopPropagation()}>
+                          {inv.ownerId === userInfo?.id && (
+                            <a
+                              href="http://localhost:8180/realms/sso-realm/account/#/resources"
+                              target="_blank"
+                              rel="noreferrer"
+                              className="btn btn-ghost btn-sm"
+                              title="Manage Sharing & Access in Keycloak"
+                            >
+                              🤝 Share
+                            </a>
+                          )}
                           <button className="btn btn-ghost btn-sm" onClick={() => handleEdit(inv)}>
                             ✏️
                           </button>
@@ -474,7 +492,7 @@ export function Dashboard() {
           <Modal
             view={view}
             mode={modalMode}
-            editTarget={editTarget}
+            editTarget={editTarget as any}
             onClose={() => setShowModal(false)}
             onSubmit={handleModalSubmit}
           />
