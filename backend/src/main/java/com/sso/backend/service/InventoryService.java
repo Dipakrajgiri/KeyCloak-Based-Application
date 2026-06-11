@@ -80,8 +80,9 @@ public class InventoryService {
             resource.addScope(new ScopeRepresentation("inventory:edit"));
             resource.addScope(new ScopeRepresentation("inventory:delete"));
             // NO setOwner(userId) — Client owns it in Keycloak
-            // NO setOwnerManagedAccess(true) — Users cannot share via Account Console
-            resource.setOwnerManagedAccess(false);
+            // Set ownerManagedAccess to true so the owner (Client) can manage policies via Protection API.
+            // Since the user is not the owner, this will NOT show up in their Keycloak Account Console.
+            resource.setOwnerManagedAccess(true);
 
             authzClient.protection().resource().create(resource);
         } catch (Exception e) {
@@ -153,6 +154,16 @@ public class InventoryService {
         ResourceRepresentation resource = authzClient.protection().resource().findByName("Inventory-" + inventoryId);
         if (resource == null) {
             throw new RuntimeException("Keycloak resource not found for Inventory-" + inventoryId);
+        }
+
+        // Upgrade ownerManagedAccess to true if it is false (needed for UMA policy creation)
+        if (resource.getOwnerManagedAccess() == null || !resource.getOwnerManagedAccess()) {
+            resource.setOwnerManagedAccess(true);
+            try {
+                authzClient.protection().resource().update(resource);
+            } catch (Exception e) {
+                System.err.println("Warning: Failed to update resource ownerManagedAccess to true: " + e.getMessage());
+            }
         }
 
         // 3. Get a fresh PAT using Client Credentials
