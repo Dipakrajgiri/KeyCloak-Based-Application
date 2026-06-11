@@ -86,6 +86,6 @@ public class InventoryController {
             @AuthenticationPrincipal OAuth2User jwt) {
         String requesterId = jwt.getAttribute("sub");
         inventoryService.shareInventory(id, request.targetUserId(), request.scopes(), requesterId);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 }
