@@ -8,7 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
-import org.springframework.security.oauth2.client.annotation.RegisteredOAuth2AuthorizedClient;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,8 +21,18 @@ import java.util.List;
 public class InventoryController {
 
     private final InventoryService inventoryService;
+    private final OAuth2AuthorizedClientService authorizedClientService;
 
-    /** GET /api/inventories — List all inventories (Global Read allowed by UMA) */
+    private String getAccessToken(OAuth2AuthenticationToken auth) {
+        OAuth2AuthorizedClient client = authorizedClientService.loadAuthorizedClient(
+                auth.getAuthorizedClientRegistrationId(), auth.getName());
+        if (client == null || client.getAccessToken() == null) {
+            throw new RuntimeException("Unauthorized: No active access token found");
+        }
+        return client.getAccessToken().getTokenValue();
+    }
+
+    /** GET /api/inventories — List all inventories */
     @GetMapping
     public ResponseEntity<List<InventoryDTO.Response>> getAll() {
         return ResponseEntity.ok(inventoryService.getAllInventories());
@@ -33,15 +44,13 @@ public class InventoryController {
         return ResponseEntity.ok(inventoryService.getInventory(id));
     }
 
-    /** POST /api/inventories — Create a new inventory */
+    /** POST /api/inventories — Create a new inventory (Client owns resource in Keycloak) */
     @PostMapping
     public ResponseEntity<InventoryDTO.Response> create(
             @Valid @RequestBody InventoryDTO.CreateRequest request,
-            @AuthenticationPrincipal OAuth2User jwt,
-            @RegisteredOAuth2AuthorizedClient("keycloak") OAuth2AuthorizedClient client) {
+            @AuthenticationPrincipal OAuth2User jwt) {
         String userId = jwt.getAttribute("sub");
-        // We pass the user's access token so the Service can register the UMA resource on their behalf if needed.
-        InventoryDTO.Response created = inventoryService.createInventory(request, userId, client.getAccessToken().getTokenValue());
+        InventoryDTO.Response created = inventoryService.createInventory(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
@@ -51,9 +60,9 @@ public class InventoryController {
             @PathVariable Long id,
             @Valid @RequestBody InventoryDTO.CreateRequest request,
             @AuthenticationPrincipal OAuth2User jwt,
-            @RegisteredOAuth2AuthorizedClient("keycloak") OAuth2AuthorizedClient client) {
+            OAuth2AuthenticationToken auth) {
         String userId = jwt.getAttribute("sub");
-        return ResponseEntity.ok(inventoryService.updateInventory(id, request, userId, client.getAccessToken().getTokenValue()));
+        return ResponseEntity.ok(inventoryService.updateInventory(id, request, userId, getAccessToken(auth)));
     }
 
     /** DELETE /api/inventories/{id} — Delete an inventory */
@@ -61,9 +70,22 @@ public class InventoryController {
     public ResponseEntity<Void> delete(
             @PathVariable Long id,
             @AuthenticationPrincipal OAuth2User jwt,
-            @RegisteredOAuth2AuthorizedClient("keycloak") OAuth2AuthorizedClient client) {
+            OAuth2AuthenticationToken auth) {
         String userId = jwt.getAttribute("sub");
-        inventoryService.deleteInventory(id, userId, client.getAccessToken().getTokenValue());
+        inventoryService.deleteInventory(id, userId, getAccessToken(auth));
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * POST /api/inventories/{id}/share — Share inventory with another user.
+     */
+    @PostMapping("/{id}/share")
+    public ResponseEntity<Void> share(
+            @PathVariable Long id,
+            @RequestBody InventoryDTO.ShareRequest request,
+            @AuthenticationPrincipal OAuth2User jwt) {
+        String requesterId = jwt.getAttribute("sub");
+        inventoryService.shareInventory(id, request.targetUserId(), request.scopes(), requesterId);
+        return ResponseEntity.ok().build();
     }
 }

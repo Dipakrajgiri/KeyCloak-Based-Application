@@ -57,6 +57,12 @@ export const inventoryApi = {
 
   delete: (id: number) =>
     apiRequest(`/api/inventories/${id}`, { method: "DELETE" }),
+
+  share: (id: number, data: { targetUserId: string; scopes: string[] }) =>
+    apiRequest(`/api/inventories/${id}/share`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 };
 
 // ==================== Category API ====================

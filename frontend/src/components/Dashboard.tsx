@@ -58,6 +58,15 @@ export function Dashboard() {
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [editTarget, setEditTarget] = useState<Inventory | Category | Item | null>(null);
 
+  // Share modal state
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareInventory, setShareInventory] = useState<Inventory | null>(null);
+  const [shareTargetUserId, setShareTargetUserId] = useState("");
+  const [shareScopes, setShareScopes] = useState<string[]>(["inventory:view"]);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareError, setShareError] = useState("");
+  const [shareSuccess, setShareSuccess] = useState("");
+
   // ==================== Data Fetching ====================
   const fetchInventories = useCallback(async () => {
     setLoading(true);
@@ -218,6 +227,28 @@ export function Dashboard() {
     }
   };
 
+  const handleShareSubmit = async () => {
+    if (!shareInventory || !shareTargetUserId.trim()) {
+      setShareError("Please enter a valid User ID.");
+      return;
+    }
+    setShareLoading(true);
+    setShareError("");
+    setShareSuccess("");
+    try {
+      await inventoryApi.share(shareInventory.id, {
+        targetUserId: shareTargetUserId.trim(),
+        scopes: shareScopes,
+      });
+      setShareSuccess("✅ Access granted successfully!");
+      setShareTargetUserId("");
+    } catch (err) {
+      setShareError(err instanceof Error ? err.message : "Failed to share");
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
   // ==================== Render ====================
   const getTitle = () => {
     if (view === "items" && selectedCategory) return selectedCategory.name;
@@ -362,15 +393,20 @@ export function Dashboard() {
                         </span>
                         <div className="card-actions" onClick={(e) => e.stopPropagation()}>
                           {inv.ownerId === userInfo?.id && (
-                            <a
-                              href="http://localhost:8180/realms/sso-realm/account/#/resources"
-                              target="_blank"
-                              rel="noreferrer"
+                            <button
                               className="btn btn-ghost btn-sm"
-                              title="Manage Sharing & Access in Keycloak"
+                              title="Share this inventory with another user"
+                              onClick={() => {
+                                setShareInventory(inv);
+                                setShareError("");
+                                setShareSuccess("");
+                                setShareTargetUserId("");
+                                setShareScopes(["inventory:view"]);
+                                setShowShareModal(true);
+                              }}
                             >
                               🤝 Share
-                            </a>
+                            </button>
                           )}
                           <button className="btn btn-ghost btn-sm" onClick={() => handleEdit(inv)}>
                             ✏️
@@ -496,6 +532,75 @@ export function Dashboard() {
             onClose={() => setShowModal(false)}
             onSubmit={handleModalSubmit}
           />
+        )}
+
+        {/* Share Modal */}
+        {showShareModal && shareInventory && (
+          <div className="modal-overlay" onClick={() => setShowShareModal(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "480px" }}>
+              <div className="modal-header">
+                <h2 className="modal-title">🤝 Share Inventory</h2>
+                <button className="modal-close" onClick={() => setShowShareModal(false)}>✕</button>
+              </div>
+              <div className="modal-body">
+                <p style={{ color: "var(--text-secondary)", marginBottom: "1rem", fontSize: "0.9rem" }}>
+                  Sharing: <strong style={{ color: "var(--text-primary)" }}>{shareInventory.name}</strong>
+                </p>
+
+                <div className="form-group">
+                  <label className="form-label">Target User ID (Keycloak UUID)</label>
+                  <input
+                    className="form-input"
+                    type="text"
+                    placeholder="e.g. 7645fd53-ecb0-4d8c-b2b8-e7f6e95e4cf1"
+                    value={shareTargetUserId}
+                    onChange={(e) => setShareTargetUserId(e.target.value)}
+                  />
+                  <small style={{ color: "var(--text-secondary)", fontSize: "0.78rem" }}>
+                    The Keycloak user UUID of the person you want to share with.
+                  </small>
+                </div>
+
+                <div className="form-group" style={{ marginTop: "1rem" }}>
+                  <label className="form-label">Permissions to Grant</label>
+                  {["inventory:view", "inventory:edit", "inventory:delete"].map((scope) => (
+                    <label key={scope} style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={shareScopes.includes(scope)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setShareScopes((prev) => [...prev, scope]);
+                          } else {
+                            setShareScopes((prev) => prev.filter((s) => s !== scope));
+                          }
+                        }}
+                        style={{ accentColor: "var(--primary)" }}
+                      />
+                      <span style={{ color: "var(--text-primary)", fontFamily: "monospace", fontSize: "0.85rem" }}>{scope}</span>
+                    </label>
+                  ))}
+                </div>
+
+                {shareError && (
+                  <div style={{ color: "#f87171", background: "rgba(239,68,68,0.1)", borderRadius: "8px", padding: "0.6rem 1rem", marginTop: "1rem", fontSize: "0.85rem" }}>
+                    ❌ {shareError}
+                  </div>
+                )}
+                {shareSuccess && (
+                  <div style={{ color: "#4ade80", background: "rgba(74,222,128,0.1)", borderRadius: "8px", padding: "0.6rem 1rem", marginTop: "1rem", fontSize: "0.85rem" }}>
+                    {shareSuccess}
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-ghost" onClick={() => setShowShareModal(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleShareSubmit} disabled={shareLoading}>
+                  {shareLoading ? "Sharing..." : "Grant Access"}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

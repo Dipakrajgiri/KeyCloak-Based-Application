@@ -8,7 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
-import org.springframework.security.oauth2.client.annotation.RegisteredOAuth2AuthorizedClient;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,6 +21,16 @@ import java.util.List;
 public class CategoryController {
 
     private final CategoryService categoryService;
+    private final OAuth2AuthorizedClientService authorizedClientService;
+
+    private String getAccessToken(OAuth2AuthenticationToken auth) {
+        OAuth2AuthorizedClient client = authorizedClientService.loadAuthorizedClient(
+                auth.getAuthorizedClientRegistrationId(), auth.getName());
+        if (client == null || client.getAccessToken() == null) {
+            throw new RuntimeException("Unauthorized: No active access token found");
+        }
+        return client.getAccessToken().getTokenValue();
+    }
 
     @GetMapping
     public ResponseEntity<List<CategoryDTO.Response>> getAll(
@@ -39,9 +50,9 @@ public class CategoryController {
             @PathVariable Long inventoryId,
             @Valid @RequestBody CategoryDTO.CreateRequest request,
             @AuthenticationPrincipal OAuth2User jwt,
-            @RegisteredOAuth2AuthorizedClient("keycloak") OAuth2AuthorizedClient client) {
+            OAuth2AuthenticationToken auth) {
         String userId = jwt.getAttribute("sub");
-        CategoryDTO.Response created = categoryService.createCategory(inventoryId, request, userId, client.getAccessToken().getTokenValue());
+        CategoryDTO.Response created = categoryService.createCategory(inventoryId, request, userId, getAccessToken(auth));
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
@@ -51,9 +62,9 @@ public class CategoryController {
             @PathVariable Long id,
             @Valid @RequestBody CategoryDTO.CreateRequest request,
             @AuthenticationPrincipal OAuth2User jwt,
-            @RegisteredOAuth2AuthorizedClient("keycloak") OAuth2AuthorizedClient client) {
+            OAuth2AuthenticationToken auth) {
         String userId = jwt.getAttribute("sub");
-        return ResponseEntity.ok(categoryService.updateCategory(inventoryId, id, request, userId, client.getAccessToken().getTokenValue()));
+        return ResponseEntity.ok(categoryService.updateCategory(inventoryId, id, request, userId, getAccessToken(auth)));
     }
 
     @DeleteMapping("/{id}")
@@ -61,9 +72,9 @@ public class CategoryController {
             @PathVariable Long inventoryId,
             @PathVariable Long id,
             @AuthenticationPrincipal OAuth2User jwt,
-            @RegisteredOAuth2AuthorizedClient("keycloak") OAuth2AuthorizedClient client) {
+            OAuth2AuthenticationToken auth) {
         String userId = jwt.getAttribute("sub");
-        categoryService.deleteCategory(inventoryId, id, userId, client.getAccessToken().getTokenValue());
+        categoryService.deleteCategory(inventoryId, id, userId, getAccessToken(auth));
         return ResponseEntity.noContent().build();
     }
 }

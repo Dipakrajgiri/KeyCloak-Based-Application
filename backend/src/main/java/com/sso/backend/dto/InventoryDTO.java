@@ -44,4 +44,14 @@ public class InventoryDTO {
         String createdAt,
         String updatedAt
     ) {}
+
+    /**
+     * Share Request DTO — used when owner grants access to another user.
+     * targetUserId: Keycloak user UUID of the user to share with.
+     * scopes: List of scopes to grant e.g. ["inventory:view", "inventory:edit"]
+     */
+    public record ShareRequest(
+        String targetUserId,
+        java.util.List<String> scopes
+    ) {}
 }
